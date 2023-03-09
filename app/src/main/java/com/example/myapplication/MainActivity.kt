@@ -31,34 +31,26 @@ import java.util.concurrent.Executors
 typealias LumaListener = (luma: Double) -> Unit
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity() {  //main activity extends yaani inherits from appcompat activity
 
 
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        setContentView(R.layout.activity_main)
-//
-//        val clickme = findViewById<Button>(R.id.button);
-//        clickme.setOnClickListener {
-//            Toast.makeText(this, "this does something", Toast.LENGTH_SHORT).show()
-//        }
-//    }
+    private lateinit var viewBinding: ActivityMainBinding   //ActivityMainBinding is used to bind views in the activity's layout to the activity's code
 
-    private lateinit var viewBinding: ActivityMainBinding
+    private var imageCapture: ImageCapture? = null      //ImageCapture is used to capture photos
 
-    private var imageCapture: ImageCapture? = null
-
-    private lateinit var cameraExecutor: ExecutorService
+    private lateinit var cameraExecutor: ExecutorService    //ExecutorService is used to run tasks related to the camera
 
     private var launchGallery = UploadPhotos()
 
     private var uploadPhotos = UploadPhotos()
 
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onCreate(savedInstanceState: Bundle?) {        // called when activity is created
+                            // savedInstanceState description in notes, it's an object of bundle
+
+        super.onCreate(savedInstanceState)      //notes
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(viewBinding.root)
+        setContentView(viewBinding.root)    //The root property refers to the top-level view in the layout hierarchy
 
         // Request camera permissions
         if (allPermissionsGranted()) {
@@ -81,21 +73,6 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, UploadPhotos::class.java)
         this.startActivity(intent)
     }
-
-
-//    private fun launchGallery() {
-//        launchGallery.launchGallery()
-//        val myIntent = Intent(this, UploadPhotos::class.java)
-//        this.startActivity(myIntent)
-//    }
-
-//   private fun uploadPhotos(){
-//       uploadPhotos.uploadImage()
-//       val myIntent2 = Intent(this, UploadPhotos::class.java)
-//       this.startActivity(myIntent2)
-//   }
-
-
 
 
     private fun takePhoto() {
@@ -214,11 +191,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-
-
-
-
 
 }
 

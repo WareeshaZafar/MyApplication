@@ -5,13 +5,18 @@ import com.android.volley.toolbox.HttpHeaderParser
 import java.io.*
 import kotlin.math.min
 
+import android.util.Base64
+import java.util.*
 
 open class VolleyFileUploadRequest(
     method: Int,
     url: String,
     listener: Response.Listener<NetworkResponse>,
-    errorListener: Response.ErrorListener) : Request<NetworkResponse>(method, url, errorListener) {
+    errorListener: Response.ErrorListener,
+    private val dataParts: List<DataPart>
+) : Request<NetworkResponse>(method, url, errorListener) {
     private var responseListener: Response.Listener<NetworkResponse>? = null
+
     init {
         this.responseListener = listener
     }
@@ -21,21 +26,19 @@ open class VolleyFileUploadRequest(
     private val ending = "\r\n"
     private val boundary = "imageRequest${System.currentTimeMillis()}"
 
-
     data class DataPart(
         val fileName: String,
-        val data: ByteArray,
+        val data: ByteArray?,
         val mimeType: String = "image/png"
     )
 
     override fun getHeaders(): MutableMap<String, String> =
-        when(headers) {
+        when (headers) {
             null -> super.getHeaders()
             else -> headers!!.toMutableMap()
         }
 
     override fun getBodyContentType() = "multipart/form-data;boundary=$boundary"
-
 
     @Throws(AuthFailureError::class)
     override fun getBody(): ByteArray {
@@ -49,18 +52,25 @@ open class VolleyFileUploadRequest(
             if (data != null && data.isNotEmpty()) {
                 processData(dataOutputStream, data)
             }
+            dataParts.forEach { dataPart ->
+                dataOutputStream.writeBytes(divider + boundary + ending)
+                dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"${UUID.randomUUID()}\"; filename=\"${dataPart.fileName}\"$ending")
+                dataOutputStream.writeBytes("Content-Type: ${dataPart.mimeType}$ending")
+                dataOutputStream.writeBytes(ending)
+
+                // convert image data to base64
+                val base64Data = Base64.encodeToString(dataPart.data, Base64.DEFAULT)
+
+                // write base64 data to the output stream
+                dataOutputStream.writeBytes(base64Data)
+                dataOutputStream.writeBytes(ending)
+            }
             dataOutputStream.writeBytes(divider + boundary + divider + ending)
             return byteArrayOutputStream.toByteArray()
-
         } catch (e: IOException) {
             e.printStackTrace()
         }
         return super.getBody()
-    }
-
-    @Throws(AuthFailureError::class)
-    open fun getByteData(): Map<String, Any>? {
-        return null
     }
 
     override fun parseNetworkResponse(response: NetworkResponse): Response<NetworkResponse> {
@@ -89,35 +99,34 @@ open class VolleyFileUploadRequest(
                 dataOutputStream.writeBytes(it.value + ending)
             }
         } catch (e: UnsupportedEncodingException) {
-            throw RuntimeException("Unsupported encoding not supported: $encoding with error: ${e.message}", e)
+            throw RuntimeException("Unsupported encoding not supported: $encoding with error: ${e.message}")
         }
     }
 
     @Throws(IOException::class)
     private fun processData(dataOutputStream: DataOutputStream, data: Map<String, FileDataPart>) {
         data.forEach {
-            val dataFile = it.value
-            dataOutputStream.writeBytes("$divider$boundary$ending")
-            dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"${it.key}\"; filename=\"${dataFile.fileName}\"$ending")
-            if (dataFile.type != null && dataFile.type.trim().isNotEmpty()) {
-                dataOutputStream.writeBytes("Content-Type: ${dataFile.type}$ending")
+            val fileName = it.key
+            val fileDataPart = it.value
+            dataOutputStream.writeBytes(divider + boundary + ending)
+            dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"$fileName\"; filename=\"${fileDataPart.fileName}\"$ending")
+            if (fileDataPart.type != null && !fileDataPart.type!!.trim().isEmpty()) {
+                dataOutputStream.writeBytes("Content-Type: ${fileDataPart.type}$ending")
             }
             dataOutputStream.writeBytes(ending)
-            val fileInputStream = ByteArrayInputStream(dataFile.data)
-            var bytesAvailable = fileInputStream.available()
-            val maxBufferSize = 1024 * 1024
-            var bufferSize = min(bytesAvailable, maxBufferSize)
-            val buffer = ByteArray(bufferSize)
-            var bytesRead = fileInputStream.read(buffer, 0, bufferSize)
-            while (bytesRead > 0) {
-                dataOutputStream.write(buffer, 0, bufferSize)
-                bytesAvailable = fileInputStream.available()
-                bufferSize = min(bytesAvailable, maxBufferSize)
-                bytesRead = fileInputStream.read(buffer, 0, bufferSize)
-            }
+            dataOutputStream.write(fileDataPart.data, 0, fileDataPart.data.size)
             dataOutputStream.writeBytes(ending)
         }
     }
+
+     open fun getByteData(): Map<String, FileDataPart>? {
+        return null
+    }
+
+    data class FileDataPart(
+        val fileName: String,
+        val data: ByteArray,
+        val type: String? = null
+    )
 }
 
-class FileDataPart(var fileName: String?, var data: ByteArray, var type: String)

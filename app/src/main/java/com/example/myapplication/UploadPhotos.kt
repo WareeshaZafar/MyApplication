@@ -98,28 +98,6 @@ class UploadPhotos : AppCompatActivity() {
 
     }
 
-//    public fun uploadImage() {
-//        imageData?: return
-//        val request = object : VolleyFileUploadRequest(
-//            Method.POST,
-//            postURL,
-//            Response.Listener {
-//                println("response is: $it")
-//            },
-//            Response.ErrorListener {
-//                println("error is: $it")
-//            }
-//        ) {
-//            override fun getByteData(): MutableMap<String, FileDataPart> {
-//                var params = HashMap<String, FileDataPart>()
-//                params["imageFile"] = FileDataPart("image", imageData!!, "jpeg")
-//                return params
-//            }
-//        }
-//        Volley.newRequestQueue(this).add(request)
-//    }
-
-
     private fun uploadImage() {
         if (images == null || images!!.isEmpty()) {
             Toast.makeText(this, "No images to upload", Toast.LENGTH_SHORT).show()
@@ -135,19 +113,27 @@ class UploadPhotos : AppCompatActivity() {
             },
             Response.ErrorListener { error: VolleyError? ->
                 Toast.makeText(this, "Upload failed: ${error?.message}", Toast.LENGTH_SHORT).show()
-            }) {
-
-            override fun getByteData(): MutableMap<String, DataPart> {
-                val params = HashMap<String, DataPart>()
+            },
+            dataParts = listOf(
+                DataPart(
+                    fileName = "my_image.png",
+                    data = imageData,   ///////////////////////////////////////////////////////////////////////////////////
+                    mimeType = "image/png"
+                )
+            )
+        )
+        {
+            override fun getByteData(): Map<String, FileDataPart>? {
+                val params = HashMap<String, FileDataPart>()
                 images!!.forEachIndexed { index, uri ->
-                    val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-                    val byteArrayOutputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-                    params["image${index + 1}"] = DataPart("image${index + 1}.png", byteArrayOutputStream.toByteArray())
+                        val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                        val byteArrayOutputStream = ByteArrayOutputStream()
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+                        params["image${index + 1}"] = FileDataPart("image${index + 1}.png", byteArrayOutputStream.toByteArray())
+                    }
+                    return params
                 }
-                return params
             }
-        }
 
         requestQueue.add(volleyMultipartRequest)
     }
