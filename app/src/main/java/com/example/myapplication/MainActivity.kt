@@ -70,18 +70,20 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
     }
 
     private fun openGallery(){
-        val intent = Intent(this, UploadPhotos::class.java)
+        val intent = Intent(this, UploadPhotos::class.java)     //explicit intent
         this.startActivity(intent)
     }
 
 
     private fun takePhoto() {
-        // Get a stable reference of the modifiable image capture use case
+        //checks if the imageCapture reference is not null. If it is null, the function returns.
         val imageCapture = imageCapture ?: return
 
-        // Create time stamped name and MediaStore entry.
+        // Create time stamped name
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
             .format(System.currentTimeMillis())
+
+        //create MediaStore entry
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -97,8 +99,7 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
                 contentValues)
             .build()
 
-        // Set up image capture listener, which is triggered after photo has
-        // been taken
+        // Set up image capture listener, which is triggered after photo has been taken
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(this),

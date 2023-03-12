@@ -17,7 +17,11 @@ import java.io.IOException
 import android.provider.MediaStore
 import java.io.ByteArrayOutputStream
 import android.graphics.Bitmap
-
+import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.storage.BlobId
+import com.google.cloud.storage.Storage
+import com.google.cloud.storage.StorageOptions
+import java.io.FileInputStream
 
 
 class UploadPhotos : AppCompatActivity() {
@@ -30,7 +34,7 @@ class UploadPhotos : AppCompatActivity() {
     private lateinit var prevBtn: Button
 
     private var imageData: ByteArray? = null
-    private val postURL: String = "https://ptsv2.com/" // remember to use your own api
+    private val postURL: String = "" // remember to use your own api
 
     //store uris of picked images
     private var images : ArrayList<Uri?>? = null
@@ -41,9 +45,15 @@ class UploadPhotos : AppCompatActivity() {
     //request code to pick images
     private val PICK_IMAGES_CODE = 999
 
-//    companion object {
-//        private const val IMAGE_PICK_CODE = 999
-//    }
+    val storage = StorageOptions.newBuilder()
+        .setProjectId("total-dreamer-380120")
+        .setCredentials(GoogleCredentials.fromStream(FileInputStream("C:/Users/HP/Downloads/total-dreamer-380120-1621106aee60.json")))
+        .build()
+        .service
+
+    val bucket = storage.get("fypphotoproject")
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,20 +92,18 @@ class UploadPhotos : AppCompatActivity() {
         imageButton.setOnClickListener {
             launchGallery()
         }
-        sendButton = findViewById(R.id.sendButton)
+        sendButton = findViewById(R.id.sendButton)      //upload image wala button
         sendButton.setOnClickListener {
             uploadImage()
         }
     }
 
     public fun launchGallery() {
-        val intent = Intent(Intent.ACTION_PICK)
-        intent.type = "image/*"
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
-        intent.action=Intent.ACTION_GET_CONTENT
-        //startActivityForResult(intent, IMAGE_PICK_CODE)
+        val intent = Intent(Intent.ACTION_PICK)     //Creates an Intent with the ACTION_PICK action, which is used to select an item from a list
+        intent.type = "image/*"     //Sets the type of data to select to = image files
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)   //Enables the user to select multiple images
+        intent.action=Intent.ACTION_GET_CONTENT     //Sets the action to "get content", which is used to retrieve data from a content provider
         startActivityForResult(Intent.createChooser(intent,"selected images"), PICK_IMAGES_CODE)
-
     }
 
     private fun uploadImage() {
@@ -106,6 +114,21 @@ class UploadPhotos : AppCompatActivity() {
 
         val requestQueue = Volley.newRequestQueue(this)
 
+        val dataParts = mutableListOf<VolleyFileUploadRequest.DataPart>()
+        for (i in images!!.indices) {
+            val uri = images!![i]
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+            dataParts.add(
+                VolleyFileUploadRequest.DataPart(
+                    fileName = "image_${i + 1}.png",
+                    data = byteArrayOutputStream.toByteArray(),
+                    mimeType = "image/png"
+                )
+            )
+        }
+
         val volleyMultipartRequest = object : VolleyFileUploadRequest(Method.POST, postURL,
             Response.Listener { response ->
                 val responseString = String(response.data)
@@ -114,13 +137,7 @@ class UploadPhotos : AppCompatActivity() {
             Response.ErrorListener { error: VolleyError? ->
                 Toast.makeText(this, "Upload failed: ${error?.message}", Toast.LENGTH_SHORT).show()
             },
-            dataParts = listOf(
-                DataPart(
-                    fileName = "my_image.png",
-                    data = imageData,   ///////////////////////////////////////////////////////////////////////////////////
-                    mimeType = "image/png"
-                )
-            )
+            dataParts = dataParts
         )
         {
             override fun getByteData(): Map<String, FileDataPart>? {
@@ -134,7 +151,6 @@ class UploadPhotos : AppCompatActivity() {
                     return params
                 }
             }
-
         requestQueue.add(volleyMultipartRequest)
     }
 
@@ -157,7 +173,6 @@ class UploadPhotos : AppCompatActivity() {
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
-        //////////////
         if (requestCode==PICK_IMAGES_CODE){
             if (resultCode==Activity.RESULT_OK){
                 if (data!!.clipData != null ){
