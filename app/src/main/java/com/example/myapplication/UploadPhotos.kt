@@ -1,30 +1,29 @@
 package com.t2r2.volleyexample
 
-import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.widget.Button
 import android.widget.ImageSwitcher
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.android.volley.Response
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.Volley
 import com.example.myapplication.R
-import java.io.IOException
-import android.provider.MediaStore
-import java.io.ByteArrayOutputStream
-import android.graphics.Bitmap
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
-import java.io.FileInputStream
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.InputStream
 
+open class UploadPhotos : AppCompatActivity() {
 
-class UploadPhotos : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private lateinit var imageButton: Button
     private lateinit var sendButton: Button
@@ -33,11 +32,8 @@ class UploadPhotos : AppCompatActivity() {
     private lateinit var nextBtn: Button
     private lateinit var prevBtn: Button
 
-    private var imageData: ByteArray? = null
-    private val postURL: String = "" // remember to use your own api
-
     //store uris of picked images
-    private var images : ArrayList<Uri?>? = null
+    private var images: ArrayList<String> = ArrayList()
 
     //current position of picked images
     private var position = 0
@@ -45,149 +41,117 @@ class UploadPhotos : AppCompatActivity() {
     //request code to pick images
     private val PICK_IMAGES_CODE = 999
 
-    val storage = StorageOptions.newBuilder()
-        .setProjectId("total-dreamer-380120")
-        .setCredentials(GoogleCredentials.fromStream(FileInputStream("C:/Users/HP/Downloads/total-dreamer-380120-1621106aee60.json")))
-        .build()
-        .service
-
-    val bucket = storage.get("fypphotoproject")
-
-
+    private lateinit var storage: Storage
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.upload_photos)
 
-        images = ArrayList()
-
         imageSwitcher = findViewById(R.id.imageSwitcher)
-        imageSwitcher.setFactory{ImageView(applicationContext)}
+        imageSwitcher.setFactory { ImageView(applicationContext) }
 
         nextBtn = findViewById(R.id.nextBtn)
-        nextBtn.setOnClickListener{
-            if(position<images!!.size-1){
+        nextBtn.setOnClickListener {
+            if (position < images.size - 1) {
                 position++
-                imageSwitcher.setImageURI(images!![position])
-            }
-            else{
-                Toast.makeText(this,"no more images", Toast.LENGTH_SHORT).show()
+                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(images[position]))
+                imageView.setImageBitmap(bitmap)
+            } else {
+                Toast.makeText(this, "no more images", Toast.LENGTH_SHORT).show()
             }
         }
 
         prevBtn = findViewById(R.id.prevBtn)
         prevBtn.setOnClickListener {
-            if (position>0){
+            if (position > 0) {
                 position--
-                imageSwitcher.setImageURI(images!![position])
-            }
-            else{
-                Toast.makeText(this,"no more images", Toast.LENGTH_SHORT).show()
+                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(images[position]))
+                imageView.setImageBitmap(bitmap)
+            } else {
+                Toast.makeText(this, "no more images", Toast.LENGTH_SHORT).show()
             }
         }
 
         imageView = findViewById(R.id.imageView)
 
-        imageButton = findViewById(R.id.imageButton)    //choose image wala button
+        imageButton = findViewById(R.id.imageButton) //choose image wala button
         imageButton.setOnClickListener {
             launchGallery()
         }
-        sendButton = findViewById(R.id.sendButton)      //upload image wala button
+
+        sendButton = findViewById(R.id.sendButton) //upload image wala button
         sendButton.setOnClickListener {
-            uploadImage()
+            uploadImages()
         }
+
+        val context = this
+        val inputStream: InputStream = context.assets.open("total-dreamer-380120-1621106aee60.json")
+        val credentials: GoogleCredentials = GoogleCredentials.fromStream(inputStream)
+        val storage: Storage? = StorageOptions.newBuilder()
+            .setProjectId("total-dreamer-380120")
+            .setCredentials(credentials)
+            .build()
+            .service
+
+
+
     }
 
     public fun launchGallery() {
-        val intent = Intent(Intent.ACTION_PICK)     //Creates an Intent with the ACTION_PICK action, which is used to select an item from a list
-        intent.type = "image/*"     //Sets the type of data to select to = image files
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)   //Enables the user to select multiple images
-        intent.action=Intent.ACTION_GET_CONTENT     //Sets the action to "get content", which is used to retrieve data from a content provider
-        startActivityForResult(Intent.createChooser(intent,"selected images"), PICK_IMAGES_CODE)
+        val intent = Intent(Intent.ACTION_PICK) //Creates an Intent with the ACTION_PICK action, which is used to select an item from a list
+        intent.type = "image/*" //Sets the type of data to select to = image files
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) //Enables the user to select multiple images
+        intent.action = Intent.ACTION_GET_CONTENT //Sets the action to "get content", which is used to retrieve data from a content provider
+        startActivityForResult(Intent.createChooser(intent, "selected images"), PICK_IMAGES_CODE)
     }
 
-    private fun uploadImage() {
-        if (images == null || images!!.isEmpty()) {
-            Toast.makeText(this, "No images to upload", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val requestQueue = Volley.newRequestQueue(this)
-
-        val dataParts = mutableListOf<VolleyFileUploadRequest.DataPart>()
-        for (i in images!!.indices) {
-            val uri = images!![i]
-            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-            dataParts.add(
-                VolleyFileUploadRequest.DataPart(
-                    fileName = "image_${i + 1}.png",
-                    data = byteArrayOutputStream.toByteArray(),
-                    mimeType = "image/png"
-                )
-            )
-        }
-
-        val volleyMultipartRequest = object : VolleyFileUploadRequest(Method.POST, postURL,
-            Response.Listener { response ->
-                val responseString = String(response.data)
-                Toast.makeText(this, "Upload success: $responseString", Toast.LENGTH_SHORT).show()
-            },
-            Response.ErrorListener { error: VolleyError? ->
-                Toast.makeText(this, "Upload failed: ${error?.message}", Toast.LENGTH_SHORT).show()
-            },
-            dataParts = dataParts
-        )
-        {
-            override fun getByteData(): Map<String, FileDataPart>? {
-                val params = HashMap<String, FileDataPart>()
-                images!!.forEachIndexed { index, uri ->
-                        val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-                        val byteArrayOutputStream = ByteArrayOutputStream()
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-                        params["image${index + 1}"] = FileDataPart("image${index + 1}.png", byteArrayOutputStream.toByteArray())
-                    }
-                    return params
-                }
-            }
-        requestQueue.add(volleyMultipartRequest)
-    }
-
-
-
-    @Throws(IOException::class)
-    private fun createImageData(uri: Uri) {
-        val inputStream = contentResolver.openInputStream(uri)
-        inputStream?.buffered()?.use {
-            imageData = it.readBytes()
-        }
-    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (resultCode == Activity.RESULT_OK && requestCode == PICK_IMAGES_CODE) {
-            val uri = data?.data
-            if (uri != null) {
-                imageView.setImageURI(uri)
-                createImageData(uri)
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == PICK_IMAGES_CODE && resultCode == RESULT_OK) {
+            if (data?.clipData != null) { //if multiple images are selected
+                val count = data.clipData!!.itemCount //get the count of selected images
+                for (i in 0 until count) {
+                    val imageUri = data.clipData!!.getItemAt(i).uri //get the uri of each selected image
+                    images.add(imageUri.toString()) //add the uri to the list of selected images
+                }
+                position = 0 //set the current position to the first image
+                showImage(images[position]) //display the first image
+            } else if (data?.data != null) { //if only one image is selected
+                val imageUri = data.data //get the uri of the selected image
+                images.add(imageUri.toString()) //add the uri to the list of selected images
+                position = 0 //set the current position to the first image
+                showImage(images[position]) //display the selected image
             }
         }
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode==PICK_IMAGES_CODE){
-            if (resultCode==Activity.RESULT_OK){
-                if (data!!.clipData != null ){
-                    val count = data.clipData!!.itemCount
-                    for (i in 0 until count){
-                        val imageUri = data.clipData!!.getItemAt(i).uri
-                        images!!.add(imageUri)
-                    }
-                    imageSwitcher.setImageURI(images!![0])
-                }
-                else{
-                    val imageUri = data.data
-                    imageSwitcher.setImageURI(imageUri)
-                }
+    }
+
+    private fun showImage(imageUri: String) {
+        val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(imageUri))
+        imageView.setImageBitmap(bitmap)
+    }
+
+    private fun uploadImages() {
+
+        if (images.isNotEmpty()) { //check if any image is selected
+            for (i in 0 until images.size) { //iterate over the list of selected images
+                  val imageUri = images[i] //get the uri of the image
+                  val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(imageUri)) //get the bitmap of the image
+                  val byteArrayOutputStream = ByteArrayOutputStream() //create a byte array output stream
+                  bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream) //compress the bitmap to a JPEG format with a quality of 100
+                  val inputStream = ByteArrayInputStream(byteArrayOutputStream.toByteArray()) //create an input stream from the byte array output stream
+                  val blobId = BlobId.of("fypphotoproject", "${System.currentTimeMillis()}_image_$i.png") //create a unique id for the blob
+                  val blobInfo = BlobInfo.newBuilder(blobId).setContentType("image/png").build() //create a blob info object with the unique id and content type
+                  //storage.create(blobInfo, inputStream.readBytes()) //create the blob with the blob info object and the input stream
+//
+                setContentView(R.layout.testt)
             }
+            //setContentView(R.layout.testt)
+            Toast.makeText(this, "Images uploaded successfully", Toast.LENGTH_SHORT).show()
+        } else {
+            //setContentView(R.layout.testt)
+            Toast.makeText(this, "No images selected", Toast.LENGTH_SHORT).show()
         }
     }
 }

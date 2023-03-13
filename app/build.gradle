@@ -36,6 +36,13 @@ android {
     packagingOptions {
         exclude 'META-INF/INDEX.LIST'
     }
+    sourceSets {
+        main {
+            assets {
+                srcDirs 'src\\main\\assets'
+            }
+        }
+    }
 }
 
 dependencies {
