@@ -143,6 +143,7 @@ open class UploadPhotos : AppCompatActivity() {
                   val inputStream = ByteArrayInputStream(byteArrayOutputStream.toByteArray()) //create an input stream from the byte array output stream
                   val blobId = BlobId.of("fypphotoproject", "${System.currentTimeMillis()}_image_$i.png") //create a unique id for the blob
                   val blobInfo = BlobInfo.newBuilder(blobId).setContentType("image/png").build() //create a blob info object with the unique id and content type
+                  storage.create(blobInfo,inputStream.readBytes())
                   //storage.create(blobInfo, inputStream.readBytes()) //create the blob with the blob info object and the input stream
 //
                 setContentView(R.layout.testt)
