@@ -11,12 +11,16 @@ import android.widget.ImageSwitcher
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -41,7 +45,7 @@ open class UploadPhotos : AppCompatActivity() {
     //request code to pick images
     private val PICK_IMAGES_CODE = 999
 
-    private lateinit var storage: Storage
+//    private lateinit var storage: Storage
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,15 +87,16 @@ open class UploadPhotos : AppCompatActivity() {
         sendButton.setOnClickListener {
             uploadImages()
         }
-
-        val context = this
-        val inputStream: InputStream = context.assets.open("total-dreamer-380120-1621106aee60.json")
-        val credentials: GoogleCredentials = GoogleCredentials.fromStream(inputStream)
-        val storage: Storage? = StorageOptions.newBuilder()
-            .setProjectId("total-dreamer-380120")
-            .setCredentials(credentials)
-            .build()
-            .service
+////
+//          val context = this
+//        val inputStream: InputStream = context.assets.open("total-dreamer-380120-1621106aee60.json")
+//        val credentials = GoogleCredentials.fromStream(inputStream)
+//         storage = StorageOptions.newBuilder()
+//            .setProjectId("total-dreamer-380120")
+//            .setCredentials(credentials)
+//            .build()
+//            .service
+//        println("Creds valid hain bro!")
 
 
 
@@ -131,28 +136,33 @@ open class UploadPhotos : AppCompatActivity() {
         val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(imageUri))
         imageView.setImageBitmap(bitmap)
     }
+    private fun uploadImages() = lifecycleScope.launch {
+        if (images.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                val credentials = GoogleCredentials.fromStream(assets.open("total-dreamer-380120-1621106aee60.json"))
+                val storage = StorageOptions.newBuilder().setCredentials(credentials).build().service
 
-    private fun uploadImages() {
+                for (i in 0 until images.size) {
+                    val imageUri = images[i]
+                    val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(imageUri))
+                    val byteArrayOutputStream = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
 
-        if (images.isNotEmpty()) { //check if any image is selected
-            for (i in 0 until images.size) { //iterate over the list of selected images
-                  val imageUri = images[i] //get the uri of the image
-                  val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, Uri.parse(imageUri)) //get the bitmap of the image
-                  val byteArrayOutputStream = ByteArrayOutputStream() //create a byte array output stream
-                  bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream) //compress the bitmap to a JPEG format with a quality of 100
-                  val inputStream = ByteArrayInputStream(byteArrayOutputStream.toByteArray()) //create an input stream from the byte array output stream
-                  val blobId = BlobId.of("fypphotoproject", "${System.currentTimeMillis()}_image_$i.png") //create a unique id for the blob
-                  val blobInfo = BlobInfo.newBuilder(blobId).setContentType("image/png").build() //create a blob info object with the unique id and content type
-                  storage.create(blobInfo,inputStream.readBytes())
-                  //storage.create(blobInfo, inputStream.readBytes()) //create the blob with the blob info object and the input stream
-//
-                setContentView(R.layout.testt)
+                    val imageName = "image_$i.png"
+                    val blobId = BlobId.of("fypphotoproject", imageName)
+                    val blobInfo = BlobInfo.newBuilder(blobId).build()
+                    val imageByteArray = byteArrayOutputStream.toByteArray()
+                    val imageInputStream: InputStream = ByteArrayInputStream(imageByteArray)
+                    storage.create(blobInfo, imageInputStream)
+                }
             }
-            //setContentView(R.layout.testt)
-            Toast.makeText(this, "Images uploaded successfully", Toast.LENGTH_SHORT).show()
+
+            println("Success")
         } else {
-            //setContentView(R.layout.testt)
-            Toast.makeText(this, "No images selected", Toast.LENGTH_SHORT).show()
+            println("Failed")
         }
+
     }
+
+
 }

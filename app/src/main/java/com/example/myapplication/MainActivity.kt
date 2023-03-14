@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -22,6 +21,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.myapplication.databinding.ActivityMainBinding
 import com.t2r2.volleyexample.UploadPhotos
+import com.t2r2.volleyexample.UploadPhotos1
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
