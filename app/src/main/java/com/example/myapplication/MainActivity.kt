@@ -6,6 +6,7 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -21,7 +22,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.myapplication.databinding.ActivityMainBinding
 import com.t2r2.volleyexample.UploadPhotos
-import com.t2r2.volleyexample.UploadPhotos1
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
     private var launchGallery = UploadPhotos()
 
     private var uploadPhotos = UploadPhotos()
+
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {        // called when activity is created
@@ -67,6 +69,9 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
         viewBinding.gallery.setOnClickListener { openGallery() }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        //viewBinding.arButton.setOnClickListener{ openAR() }
+
     }
 
     private fun openGallery(){
@@ -74,6 +79,10 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
         this.startActivity(intent)
     }
 
+//    private fun openAR(){
+//        val intentAR = Intent(this, arFragment::class.java)
+//        this.startActivity(intentAR)
+//    }
 
     private fun takePhoto() {
         //checks if the imageCapture reference is not null. If it is null, the function returns.
