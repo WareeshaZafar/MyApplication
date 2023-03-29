@@ -38,6 +38,10 @@
             android:exported="true">
         </activity>
 
+        <activity
+            android:name=".Ar"
+            android:exported="true">
+        </activity>
 
 
     </application>
