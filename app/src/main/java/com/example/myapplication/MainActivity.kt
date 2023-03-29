@@ -40,6 +40,11 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
 
     private lateinit var cameraExecutor: ExecutorService    //ExecutorService is used to run tasks related to the camera
 
+    private var launchGallery = UploadPhotos()
+
+    private var uploadPhotos = UploadPhotos()
+
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {        // called when activity is created
@@ -65,7 +70,7 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        viewBinding.arButton.setOnClickListener{ openAR() }
+        //viewBinding.arButton.setOnClickListener{ openAR() }
 
     }
 
@@ -74,10 +79,10 @@ class MainActivity : AppCompatActivity() {  //main activity extends yaani inheri
         this.startActivity(intent)
     }
 
-    private fun openAR(){
-        val intentAR = Intent(this, Ar::class.java)
-        this.startActivity(intentAR)
-    }
+//    private fun openAR(){
+//        val intentAR = Intent(this, arFragment::class.java)
+//        this.startActivity(intentAR)
+//    }
 
     private fun takePhoto() {
         //checks if the imageCapture reference is not null. If it is null, the function returns.
